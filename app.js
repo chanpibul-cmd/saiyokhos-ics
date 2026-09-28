@@ -458,9 +458,6 @@ function renderReport() {
   } else if (rec.medicine) {
     drawDynamicPill(ctx, 215, 1083, rec.medicine, "green");
   }
-  if (preloadedAssets["yellow_note"]) {
-    ctx.drawImage(preloadedAssets["yellow_note"], 240, 1118);
-  }
 
   // Food / Water
   if (rec.food_water === "เพียงพอ" && preloadedAssets["pill_peangphor"]) {
@@ -481,9 +478,6 @@ function renderReport() {
     ctx.drawImage(preloadedAssets["pill_pokati"], 215, 1233);
   } else if (rec.tap_water) {
     drawDynamicPill(ctx, 215, 1233, rec.tap_water, "green");
-  }
-  if (preloadedAssets["water_note"]) {
-    ctx.drawImage(preloadedAssets["water_note"], 310, 1224);
   }
 
   // Internet
@@ -511,15 +505,66 @@ function renderReport() {
   // -------------------------------------------------------------
   // 7. Box 6: สิ่งที่ต้องการสนับสนุนจากจังหวัด (Provincial Support)
   // -------------------------------------------------------------
-  if (preloadedAssets["b6_1"]) ctx.drawImage(preloadedAssets["b6_1"], 580, 1146);
-  if (preloadedAssets["b6_2"]) ctx.drawImage(preloadedAssets["b6_2"], 580, 1220);
-  if (preloadedAssets["b6_3"]) ctx.drawImage(preloadedAssets["b6_3"], 580, 1298);
+  function renderSupportItem(text, yTop, defaultIconKey) {
+    if (!text || !text.trim()) return;
+    const cleanText = text.trim();
+
+    let iconImg = null;
+    if (/lepto|ตรวจ|ชุดตรวจ/i.test(cleanText)) {
+      iconImg = preloadedAssets["icon_support_1"];
+    } else if (/น้ำ|ประปา/i.test(cleanText)) {
+      iconImg = preloadedAssets["icon_support_2"];
+    } else if (/ผู้ป่วย|ติดเตียง|อพยพ/i.test(cleanText)) {
+      iconImg = preloadedAssets["icon_support_3"];
+    } else if (defaultIconKey && preloadedAssets[defaultIconKey]) {
+      iconImg = preloadedAssets[defaultIconKey];
+    }
+
+    let xText = 580;
+    if (iconImg) {
+      ctx.drawImage(iconImg, 575, yTop + 2);
+      xText = 575 + iconImg.width + 10;
+    }
+
+    const maxW = 935 - xText;
+    const lines = wrapThaiCanvasText(ctx, cleanText, maxW, "bold 16px Prompt");
+    if (lines.length === 0) return;
+
+    ctx.fillStyle = NAVY;
+    let currY = yTop;
+    lines.forEach((line, idx) => {
+      ctx.font = idx === 0 ? "bold 16px Prompt" : "14px Prompt";
+      ctx.textBaseline = "top";
+      ctx.textAlign = "left";
+      ctx.fillText(line, xText, currY);
+      currY += 21;
+    });
+  }
+
+  renderSupportItem(rec.support_1, 1146, "icon_support_1");
+  renderSupportItem(rec.support_2, 1220, "icon_support_2");
+  renderSupportItem(rec.support_3, 1298, "icon_support_3");
 
   // -------------------------------------------------------------
   // 8. Footer: Hospital Status & Reporter
   // -------------------------------------------------------------
-  if (preloadedAssets["pill_status"]) {
-    ctx.drawImage(preloadedAssets["pill_status"], 225, 1418);
+  const statusStr = (rec.hosp_status || "").trim();
+  if (statusStr) {
+    if (statusStr.includes("กระทบ") || /yellow/i.test(statusStr)) {
+      if (preloadedAssets["pill_status_yellow"]) {
+        ctx.drawImage(preloadedAssets["pill_status_yellow"], 225, 1418);
+      }
+    } else if (statusStr.includes("เร่งด่วน") || statusStr.includes("งด") || /red/i.test(statusStr)) {
+      if (preloadedAssets["pill_status_red"]) {
+        ctx.drawImage(preloadedAssets["pill_status_red"], 225, 1418);
+      }
+    } else if (statusStr.includes("ปกติ") || /green/i.test(statusStr)) {
+      if (preloadedAssets["pill_status_green"]) {
+        ctx.drawImage(preloadedAssets["pill_status_green"], 225, 1418);
+      } else if (preloadedAssets["pill_status"]) {
+        ctx.drawImage(preloadedAssets["pill_status"], 225, 1418);
+      }
+    }
   }
 
   const reporterName = rec.reporter_name || "รพ.ไทรโยค";
@@ -585,6 +630,79 @@ function drawDynamicPill(ctx, x, y, text, type = "green") {
   ctx.textAlign = "left";
   ctx.fillText(text, x + 35, cy);
   ctx.restore();
+}
+
+function wrapThaiCanvasText(ctx, text, maxW, font) {
+  ctx.save();
+  ctx.font = font;
+  const paragraphs = text.split('\n');
+  const lines = [];
+
+  let segmenter = null;
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    try {
+      segmenter = new Intl.Segmenter('th', { granularity: 'word' });
+    } catch (e) {}
+  }
+
+  for (const p of paragraphs) {
+    const trimmed = p.trim();
+    if (!trimmed) continue;
+
+    if (segmenter) {
+      const words = Array.from(segmenter.segment(trimmed)).map(s => s.segment);
+      let curr = "";
+      for (const w of words) {
+        const test = curr + w;
+        if (ctx.measureText(test).width <= maxW) {
+          curr = test;
+        } else {
+          if (ctx.measureText(w).width <= maxW) {
+            if (curr.trim()) lines.push(curr.trim());
+            curr = w.trimStart();
+          } else {
+            for (const ch of w) {
+              const testCh = curr + ch;
+              if (ctx.measureText(testCh).width <= maxW) {
+                curr = testCh;
+              } else {
+                if (curr.trim()) lines.push(curr.trim());
+                curr = ch;
+              }
+            }
+          }
+        }
+      }
+      if (curr.trim()) lines.push(curr.trim());
+    } else {
+      const words = trimmed.split(' ');
+      let curr = "";
+      for (const w of words) {
+        const test = curr ? curr + " " + w : w;
+        if (ctx.measureText(test).width <= maxW) {
+          curr = test;
+        } else {
+          if (ctx.measureText(w).width <= maxW) {
+            if (curr) lines.push(curr);
+            curr = w;
+          } else {
+            for (const ch of w) {
+              const testCh = curr + ch;
+              if (ctx.measureText(testCh).width <= maxW) {
+                curr = testCh;
+              } else {
+                if (curr) lines.push(curr);
+                curr = ch;
+              }
+            }
+          }
+        }
+      }
+      if (curr) lines.push(curr);
+    }
+  }
+  ctx.restore();
+  return lines;
 }
 
 function drawFittedText(ctx, xLeft, y, maxW, text, fontFamily, baseSize = 13, minSize = 8, fill = "#002d62") {
