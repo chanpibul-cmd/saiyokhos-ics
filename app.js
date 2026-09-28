@@ -15,7 +15,7 @@ const THAI_MONTHS = [
 const COLUMN_KEYS = [
   "date", "time", "water_level", "villages", "households", "people", "routes_cut",
   "trend", "hosp_affected", "staff_total", "staff_affected", "staff_absent",
-  "beds_total", "beds_current", "beds_available", "er_ready", "ambulance_ready",
+  "beds_total", "beds_current", "beds_available", "patients_affected", "ambulance_ready",
   "ems_status", "referral_status", "dest_hospital", "bedridden", "oxygen",
   "dialysis", "chronic_med", "urgent_evac", "medicine", "food_water",
   "electricity", "tap_water", "internet", "generator", "fuel",
@@ -76,7 +76,7 @@ function showToast(message) {
 // Preload Assets & Template
 // -------------------------------------------------------------
 async function initAssets() {
-  // Load base template 000.png
+  // Load base template 000.png with cache buster
   templateImage = new Image();
   templateImage.crossOrigin = "anonymous";
   const templatePromise = new Promise((resolve) => {
@@ -86,7 +86,7 @@ async function initAssets() {
       resolve();
     };
   });
-  templateImage.src = "000.png";
+  templateImage.src = "000.png?v=" + new Date().getTime();
 
   // Preload small badge assets
   const assetPromises = [];
@@ -389,36 +389,25 @@ function renderReport() {
   drawRightAligned(920, 438, rec.staff_affected, "bold 28px Prompt", DARK_TEAL);
   drawRightAligned(920, 480, rec.staff_absent, "bold 28px Prompt", DARK_TEAL);
 
-  // Beds
-  [
+  // Beds & Patients Affected
+  const bedItems = [
     { val: rec.beds_total, y: 526 },
     { val: rec.beds_current, y: 567 },
-    { val: rec.beds_available, y: 608 }
-  ].forEach((item) => {
-    if (item.val) {
-      if (/^\d+$/.test(item.val)) {
-        drawRightAligned(920, item.y, item.val, "bold 28px Prompt", DARK_TEAL);
+    { val: rec.beds_available, y: 608 },
+    { val: rec.patients_affected || rec.er_ready, y: 649 }
+  ];
+
+  bedItems.forEach((item) => {
+    if (item.val !== undefined && item.val !== null && item.val !== "") {
+      let v = String(item.val).trim();
+      if (v.endsWith(".0")) v = v.substring(0, v.length - 2);
+      if (/^\d+$/.test(v)) {
+        drawRightAligned(920, item.y, v, "bold 28px Prompt", DARK_TEAL);
       } else {
-        drawCentered(898, item.y + 4, item.val, "bold 20px Prompt", DARK_TEAL);
+        drawCentered(898, item.y + 4, v, "bold 20px Prompt", DARK_TEAL);
       }
     }
   });
-
-  // ICU / ER Ready Badge
-  const erVal = rec.er_ready.trim();
-  if (["ไม่ใช่", "ไม่พร้อม", "งดให้บริการ"].includes(erVal)) {
-    if (preloadedAssets["badge_icu_red"]) {
-      ctx.drawImage(preloadedAssets["badge_icu_red"], 854, 649);
-    } else {
-      drawDynamicPill(ctx, 854, 649, "ไม่ใช่", "red");
-    }
-  } else {
-    if (preloadedAssets["badge_icu_green"]) {
-      ctx.drawImage(preloadedAssets["badge_icu_green"], 854, 649);
-    } else {
-      drawDynamicPill(ctx, 854, 649, "พร้อมใช้", "green");
-    }
-  }
 
   // -------------------------------------------------------------
   // 4. Box 3: ระบบการแพทย์ฉุกเฉิน (EMS)
