@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบรายงานสถานการณ์อุทกภัย - โรงพยาบาลไทรโยค</title>
+  
+  <!-- Google Fonts: Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- CSS Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">🌊</div>
+        <div class="brand-text">
+          <h1>สถานการณ์อุทกภัย โรงพยาบาลไทรโยค</h1>
+          <p>ระบบรายงานและสร้างภาพสารสนเทศอัตโนมัติ (Google Sheets + GitHub Pages + GAS)</p>
+        </div>
+      </div>
+
+      <!-- Controls Toolbar -->
+      <div class="toolbar no-print">
+        <div class="date-selector-wrapper">
+          <label for="dateSelect">📅 เลือกวันที่:</label>
+          <select id="dateSelect" class="date-select">
+            <option value="">กำลังโหลดข้อมูล...</option>
+          </select>
+        </div>
+
+        <button id="btnRefresh" class="btn btn-light" title="ดึงข้อมูลล่าสุดจาก Google Sheets">
+          🔄 ดึงข้อมูลใหม่
+        </button>
+
+        <button id="btnPrint" class="btn btn-primary" title="พิมพ์รายงานหรือบันทึกเป็น PDF">
+          🖨️ สั่งพิมพ์รายงาน
+        </button>
+
+        <button id="btnDownload" class="btn btn-success" title="ดาวน์โหลดรูปภาพความละเอียดสูง (1024x1536)">
+          💾 ดาวน์โหลดรูปภาพ
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+    <!-- Left Column: Infographic Preview -->
+    <section class="preview-card">
+      <div class="preview-header no-print">
+        <div class="preview-title">
+          <span>📊 ตัวอย่างภาพรายงาน (Infographic Preview)</span>
+        </div>
+        <span class="status-pill-badge green">● พร้อมแสดงผล</span>
+      </div>
+
+      <div class="canvas-wrapper">
+        <canvas id="reportCanvas" width="1024" height="1536"></canvas>
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive Data Form -->
+    <aside class="form-card no-print">
+      <div class="form-header">
+        <div class="form-title">📝 ตรวจสอบและแก้ไขข้อมูล (38 รายการ)</div>
+      </div>
+
+      <div class="form-body">
+        <!-- 1. ข้อมูลทั่วไป -->
+        <div class="form-section">
+          <div class="section-title">⏱️ 1. ข้อมูลทั่วไป</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>วันที่</label>
+              <input type="text" id="field_date" class="input-control" placeholder="เช่น 28/9/2026">
+            </div>
+            <div class="input-group">
+              <label>เวลา</label>
+              <input type="text" id="field_time" class="input-control" placeholder="เช่น 9:00">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. สถานการณ์พื้นที่ -->
+        <div class="form-section">
+          <div class="section-title">🌊 2. สถานการณ์พื้นที่</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ระดับน้ำ/จุดเฝ้าระวัง (จุด)</label>
+              <input type="text" id="field_water_level" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>หมู่บ้านได้รับผลกระทบ (แห่ง)</label>
+              <input type="text" id="field_villages" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ครัวเรือน (ครัวเรือน)</label>
+              <input type="text" id="field_households" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ประชาชนได้รับผลกระทบ (คน)</label>
+              <input type="text" id="field_people" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>เส้นทางถูกตัดขาด (จุด)</label>
+              <input type="text" id="field_routes_cut" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>แนวโน้มสถานการณ์</label>
+              <input type="text" id="field_trend" class="input-control" placeholder="เพิ่มขึ้น / ทรงตัว / ลดลง">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. สถานการณ์โรงพยาบาล -->
+        <div class="form-section">
+          <div class="section-title">🏥 3. สถานการณ์โรงพยาบาล</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>โรงพยาบาลได้รับผลกระทบ</label>
+              <input type="text" id="field_hosp_affected" class="input-control" placeholder="ไม่ได้รับ">
+            </div>
+            <div class="input-group">
+              <label>บุคลากรทั้งหมด (คน)</label>
+              <input type="text" id="field_staff_total" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>บุคลากรได้รับผลกระทบ (คน)</label>
+              <input type="text" id="field_staff_affected" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ไม่สามารถมาปฏิบัติงาน (คน)</label>
+              <input type="text" id="field_staff_absent" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>เตียงทั้งหมด</label>
+              <input type="text" id="field_beds_total" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ผู้ป่วยในปัจจุบัน</label>
+              <input type="text" id="field_beds_current" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>เตียงพร้อมรับผู้ป่วย</label>
+              <input type="text" id="field_beds_available" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ห้องฉุกเฉินพร้อมใช้งาน</label>
+              <input type="text" id="field_er_ready" class="input-control" placeholder="พร้อมใช้ / ไม่ใช่">
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. ระบบการแพทย์ฉุกเฉิน -->
+        <div class="form-section">
+          <div class="section-title">🚑 4. ระบบการแพทย์ฉุกเฉิน</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>รถพยาบาลพร้อมใช้งาน</label>
+              <input type="text" id="field_ambulance_ready" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>EMS</label>
+              <input type="text" id="field_ems_status" class="input-control" placeholder="ปกติ">
+            </div>
+            <div class="input-group">
+              <label>การส่งต่อผู้ป่วย</label>
+              <input type="text" id="field_referral_status" class="input-control" placeholder="ปกติ">
+            </div>
+            <div class="input-group">
+              <label>รพ.ปลายทางที่ประสานไว้</label>
+              <input type="text" id="field_dest_hospital" class="input-control" placeholder="รอระบุ">
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. กลุ่มเปราะบางในพื้นที่ -->
+        <div class="form-section">
+          <div class="section-title">👥 5. กลุ่มเปราะบางในพื้นที่ (ราย)</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ผู้ป่วยติดบ้าน/ติดเตียง</label>
+              <input type="text" id="field_bedridden" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ผู้ป่วยต้องใช้ออกซิเจน</label>
+              <input type="text" id="field_oxygen" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ผู้ป่วยฟอกไต</label>
+              <input type="text" id="field_dialysis" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ต้องได้รับยาต่อเนื่อง</label>
+              <input type="text" id="field_chronic_med" class="input-control">
+            </div>
+            <div class="input-group form-grid-full">
+              <label>ต้องอพยพเร่งด่วน</label>
+              <input type="text" id="field_urgent_evac" class="input-control">
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. ยา / เวชภัณฑ์ / สาธารณูปโภค -->
+        <div class="form-section">
+          <div class="section-title">💊 6. ยา / เวชภัณฑ์ / สาธารณูปโภค</div>
+          <div class="form-grid">
+            <div class="input-group">
+              <label>ยาและเวชภัณฑ์</label>
+              <input type="text" id="field_medicine" class="input-control" placeholder="เพียงพอ">
+            </div>
+            <div class="input-group">
+              <label>อาหาร/น้ำดื่ม</label>
+              <input type="text" id="field_food_water" class="input-control" placeholder="เพียงพอ">
+            </div>
+            <div class="input-group">
+              <label>ไฟฟ้า</label>
+              <input type="text" id="field_electricity" class="input-control" placeholder="ปกติ">
+            </div>
+            <div class="input-group">
+              <label>น้ำประปา</label>
+              <input type="text" id="field_tap_water" class="input-control" placeholder="ปกติ">
+            </div>
+            <div class="input-group">
+              <label>ระบบสื่อสาร/Internet</label>
+              <input type="text" id="field_internet" class="input-control" placeholder="ปกติ">
+            </div>
+            <div class="input-group">
+              <label>เครื่องปั่นไฟ</label>
+              <input type="text" id="field_generator" class="input-control" placeholder="พร้อม">
+            </div>
+            <div class="input-group form-grid-full">
+              <label>น้ำมันสำรอง (ลิตร)</label>
+              <input type="text" id="field_fuel" class="input-control" placeholder="200">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. สิ่งที่ต้องการสนับสนุนจากจังหวัด -->
+        <div class="form-section">
+          <div class="section-title">📢 7. สิ่งที่ต้องการสนับสนุนจากจังหวัด</div>
+          <div class="input-group" style="margin-bottom: 0.5rem;">
+            <label>สิ่งที่ต้องการสนับสนุน 1</label>
+            <textarea id="field_support_1" class="input-control"></textarea>
+          </div>
+          <div class="input-group" style="margin-bottom: 0.5rem;">
+            <label>สิ่งที่ต้องการสนับสนุน 2</label>
+            <textarea id="field_support_2" class="input-control"></textarea>
+          </div>
+          <div class="input-group">
+            <label>สิ่งที่ต้องการสนับสนุน 3</label>
+            <textarea id="field_support_3" class="input-control"></textarea>
+          </div>
+        </div>
+
+        <!-- 8. สถานะและผู้รายงาน -->
+        <div class="form-section">
+          <div class="section-title">👤 8. สถานะและผู้รายงาน</div>
+          <div class="form-grid">
+            <div class="input-group form-grid-full">
+              <label>สถานะโรงพยาบาล</label>
+              <input type="text" id="field_hosp_status" class="input-control" placeholder="ให้บริการได้ปกติ">
+            </div>
+            <div class="input-group">
+              <label>ผู้รายงาน</label>
+              <input type="text" id="field_reporter_name" class="input-control">
+            </div>
+            <div class="input-group">
+              <label>ตำแหน่ง</label>
+              <input type="text" id="field_reporter_pos" class="input-control">
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast"></div>
+
+  <!-- Assets & App Scripts -->
+  <script src="assets.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
